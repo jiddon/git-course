@@ -1,0 +1,123 @@
+# Summary
+- the gitcourse.zip contains all toy repos created during the course, preserving their local git history. unzip with `unzip gitcourse.zip`
+- course notes are here: [course notes](https://jgcourses.gitlab.io/git/)
+- the most useful things are:
+	- to think in terms of DAGs
+	- to know that branches are just labels pointing to specific commits
+	- to know that reflog can be used to return to unreachable commits
+	- if it doubt, stick a branch (or tag) on it
+
+# personal course notes
+---
+- git porcelain vs plumbing
+	- plumbing is essentially the CLI of git
+	- porcelain is stuff like magit or the atom git plugin
+- git maintains a directed acyclic graph
+	- graph theory useful for understanding what git is doing, but only need bare minimum graph theory
+	- a graph is a way of putting things in relation
+	- a collection of nodes connected, sometimes with direction
+	- a cycle is if you can get from one node back to the ohter following the directional connections
+		- this is a cyclic graph
+	- git stores its data as an acyclic graph meaning you cant go back to a node from itself
+- files from yesterday know about files a week ago (direction is back  in time)
+	- files from the past dont know about files from the future
+	- parents know nothing about their children
+- hashes map in some deterministic way a thing to an identifier
+- 40 digit hashes used in git. change of an id not being unique is only slightly less than the chance of an SEU from a cosmic in the CPU
+	- this is a **Content Addressed Filesystem**
+		- need to know what the object is not where it is (like a normal dir/subdir/...)
+		- i.e. just know what the hash is, probably why its important that hashes are deterministic
+- arrows represent what the commit knows about
+- unstage commits `git rm --cached`
+- `HEAD -> master` means we are on HEAD which knows all about master but master doesnt know about HEAD
+- git aliases are useful, e.g.:
+	- `git config --global alias.lg "log --all --graph --decorate --oneline"`
+- `git diff --staged` is useful to see what your  staged changes are. in this instance `git diff` wont show the staged changes
+	- `git diff --cached` does the same thing
+- `git diff HEAD` does git diff from HEAD and staged and unstaged changes
+- can we do a git diff showing only unstaged?
+	- yeah its just `git diff`
+- `git diff this that`
+	- does git diff of that with respect to this
+	- i.e. if that is has one new line, then `git diff this that` shows the new line with a +
+	- otherwise `git diff that this` show the new line with a -
+	- what do we need to change from that to this
+- `git rm` does `rm` and git add
+- for `mv` we need to add the deleted file and add the new file to end up with renamed in the git status
+- `git mv` does mv, then stages both the 'deleted file' and the 'new file', so you end up with renamed in your git status
+- `git show <hash>:<file>` lets you view the file from that commit
+- `git branch <new-branch-name> <location>`
+	- can be used to make a branch at a specific commit location
+- `git switch` is nice
+- branches are just labels
+	- deleting the branch deletes the label, but not the commit associated wit hthe label
+	- if the branch label is the only thing making the commit history reachable, then you can only reach the commit if you know the commit hash
+		- this can be done using reflog
+			- reflog is used to see where the HEAD has been
+			- so it must be in there, unless garbage collection has deleted the commit if the commit is old
+	- reachability means there exists a ref (branch, tag etc) from which a commit is reachable
+- `git diff this...that` 
+	- the three dots means how to get from this to that from the latest shared common ancestor
+- **staging area is also known as index**
+- rebase
+	- git rebase -i last-commit-before-thing-you-want-to-change
+	- opens editor with log but in reverse order
+	- can re-order log just with text editor
+	- (nice editors exist to do this more easily)
+	- squash uses commit but meld into previous commit
+	- fix up discards the commits message and reuses the previous
+		- so, in the log-like view in the rebase editor, change `pick` to `fixup` (or whatever other option is desired)
+	- doing this results in a history which splits but with the same commit messages. the dates are different and the hashes are too
+	- the parents are different so the hashes are different
+	- to get back to the state before the rebase, and the same as the remote, do `git reset --hard origin/master`
+	- but, remember the rebase commits are all shown in `git reflog`
+	- chops off a sequence of commits fromthe parent of the base and reattaches them on top of anothoer commit, the new base
+	- `git rebase <other-branch>` rebases `other-branch` onto the current branch
+	- rebase with no fast forward (no-ff) gives a nice history, with the feature branch and a merge commit
+
+- resetting
+	- `--hard` takes the working tree and index to wherever you specify and checkout where you specify
+	- `--soft` doesnt change the index or working tree but do checkout where you specify
+	- `--mixed` updates the index but not the working tree. still checks out wherever you specify. this is the default, i.e. `git reset` uses `--mixed`
+- checkout vs reset
+	- checkout never moves a label
+		- i.e. can be in a detached HEAD state
+- reflog 
+	- allows you to see where a ref has been
+	- if a branch is deleted you cant see where its been
+	- `git reflog master@{<when>}`
+		- where `<when>` can be all sorts of things, like "Tue Oct 11 09:10", or "10 mins ago"
+- garbage collection
+	- eliminated old unreachable commits
+	- some algorithm, but nothing is garbage collected for at least 30 days
+	- never deletes reachable commits
+	- `git reset --hard` is a way to get rid of information unrecoverably. because it throws away the working tree which may not have been committed
+	- anything committed is in the reflog for at least 30 days
+	- stashes are garbage collected sooner, maybe two weeks or so
+- tags
+	- lightweight tags are similar to branches but it stays where it is unlike a branch
+	- annotated tags contains more information, like a commit message, stored as a git object, can be signed with GPG
+	- the point in tags is that it makes a commit easily reachable and they cannot be moved
+	- tags are not pushed by default so need to be done explicitly
+- pull
+	- a git pull does a fetch and a merge
+	- better to fetch on its own and then decide what to do, maybe a merge, maybe a rebase
+- `git add --patch`
+	- can be used to stage lines separately
+		- hunks are defined if there is an unchanged line between them
+		- pressing `s` can split the hunks into smaller hunks (according to definition above)
+		- each can be staged with `y`, or ignored with `n`
+	- but maybe best to use a porcelain here to make it easier
+
+
+# See also
+---
+- spacemacs
+- doomemacs
+- nice git alias for pretty git log 
+	` git config --global alias.lgp "log --graph --all --oneline --pretty=format:'%h%Creset%C(bold black)%d: %C(bold blue)%s%Creset %Cgreen- committed %ah by %C(blue)%an.'"`
+- tldr is a useful thing for easy to read mans
+
+# References
+---
+[course notes](https://jgcourses.gitlab.io/git/)
